@@ -5,7 +5,7 @@ type Position = [f32; 2];
 
 /// galaxies store clusters of systems and objects.
 struct Galaxy {
-    spatial: RTree<GeomWithData<Position, SystemHandle>>,
+    spatial: RTree<GeomWithData<Position, OrbiterHandle>>,
     systems: SlotMap<SystemHandle, System>,
     objects: SlotMap<ObjectHandle, Object>,
 }
@@ -20,46 +20,28 @@ impl Galaxy {
         }
     }
 
-    /// insert an object at a position
-    pub fn instantiate_object_at_pos(&mut self, pos: Position) -> ObjectHandle {
-        let object_handle = self.objects.insert_with_key(|object_handle| {
-            let system_handle = self.systems.insert(System {
-                parent: SystemParent::Root(pos),
-                orbits: vec![Orbiter {
-                    altitude: 0,
-                    handle: OrbiterHandle::Object(object_handle),
-                }],
-            });
-
-            self.spatial.insert(GeomWithData::new(pos, system_handle));
-
-            Object {
-                parent: system_handle,
-            }
-        });
-
-        object_handle
-    }
-
-    // insert an object into a system
-    pub fn instantiate_object_in_system(
-        &mut self,
-        system_handle: SystemHandle,
-        altitude: usize,
-    ) -> ObjectHandle {
+    pub fn instantiate_object(&mut self, parent: Parent) -> ObjectHandle {
         let object_handle = self.objects.insert(Object {
-            parent: system_handle,
+            parent: parent.clone(),
         });
-
-        self.systems
-            .get_mut(system_handle)
-            .unwrap()
-            .orbits
-            .push(Orbiter {
-                altitude,
-                handle: OrbiterHandle::Object(object_handle),
-            });
-
+        match parent {
+            Parent::Root(pos) => {
+                // insert object at global position
+                self.spatial
+                    .insert(GeomWithData::new(pos, OrbiterHandle::Object(object_handle)));
+            }
+            Parent::System(system_handle, orbit) => {
+                // insert object on system
+                self.systems
+                    .get_mut(system_handle)
+                    .unwrap()
+                    .orbits
+                    .push(Orbiter {
+                        orbit,
+                        handle: OrbiterHandle::Object(object_handle),
+                    });
+            }
+        }
         object_handle
     }
 
@@ -68,7 +50,7 @@ impl Galaxy {
 }
 
 struct Orbiter {
-    altitude: usize,
+    orbit: Orbit,
     handle: OrbiterHandle,
 }
 enum OrbiterHandle {
@@ -76,24 +58,31 @@ enum OrbiterHandle {
     System(SystemHandle),
 }
 
+#[derive(Debug, Clone)]
+struct Orbit {
+    // prone to change: will be periapsis and apoapsis in future
+    altitude: usize,
+}
+
 slotmap::new_key_type! { struct SystemHandle; }
 struct System {
-    parent: SystemParent,
+    parent: Parent,
     orbits: Vec<Orbiter>,
 }
 
-enum SystemParent {
+#[derive(Debug, Clone)]
+enum Parent {
     Root(Position),
-    System(SystemHandle),
+    System(SystemHandle, Orbit),
 }
 
 slotmap::new_key_type! { struct ObjectHandle; }
 struct Object {
-    parent: SystemHandle,
+    parent: Parent,
 }
 
 #[test]
 fn test() {
     let mut galaxy = Galaxy::new();
-    galaxy.instantiate_object_at_pos([0., 0.]);
+    galaxy.instantiate_object(Parent::Root([0., 0.]));
 }
