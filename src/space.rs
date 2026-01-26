@@ -1,7 +1,7 @@
 use rstar::{RTree, primitives::GeomWithData};
 use slotmap::SlotMap;
 
-type Position = [f32; 2];
+pub type Position = [f32; 2];
 
 /// galaxies store clusters of systems and objects.
 #[derive(Debug)]
