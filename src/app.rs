@@ -50,7 +50,7 @@ impl App {
         });
 
         let handle = app.world.instantiate_object(Object {
-            parent: Parent::Root([0., 0.]),
+            parent: Parent::System(system_handle, Orbit::new(5500)),
             mass: 4000,
         });
         app.handle = Some(handle);

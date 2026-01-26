@@ -57,6 +57,14 @@ impl Galaxy {
         object_handle
     }
 
+    pub fn get_object(&self, object_handle: ObjectHandle) -> Option<&Object> {
+        self.objects.get(object_handle)
+    }
+
+    pub fn get_system(&self, system_handle: SystemHandle) -> Option<&System> {
+        self.systems.get(system_handle)
+    }
+
     /// send an object instructions. used primarily for player controls.
     pub fn orchestrate_object(&mut self, key: ObjectHandle) {}
 }
@@ -70,7 +78,7 @@ enum Orbiter {
 #[derive(Debug, Clone)]
 pub struct Orbit {
     // prone to change: will be periapsis and apoapsis in future
-    altitude: usize,
+    pub altitude: usize,
 }
 
 impl Orbit {
@@ -82,8 +90,8 @@ impl Orbit {
 slotmap::new_key_type! { pub struct SystemHandle; }
 #[derive(Debug)]
 pub struct System {
-    parent: Parent,
-    orbits: Vec<Orbiter>,
+    pub parent: Parent,
+    pub orbits: Vec<Orbiter>,
 }
 
 impl System {
