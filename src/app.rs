@@ -1,4 +1,7 @@
-use crate::event::{AppEvent, Event, EventHandler};
+use crate::{
+    event::{AppEvent, Event, EventHandler},
+    space::{Galaxy, Object, ObjectHandle, Orbit, Parent, System},
+};
 use ratatui::{
     DefaultTerminal,
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
@@ -11,6 +14,9 @@ pub struct App {
     pub running: bool,
     /// Event handler.
     pub events: EventHandler,
+
+    pub world: Galaxy,
+    pub handle: Option<ObjectHandle>,
 }
 
 impl Default for App {
@@ -18,6 +24,8 @@ impl Default for App {
         Self {
             running: true,
             events: EventHandler::new(),
+            world: Galaxy::new(),
+            handle: None,
         }
     }
 }
@@ -25,7 +33,29 @@ impl Default for App {
 impl App {
     /// Constructs a new instance of [`App`].
     pub fn new() -> Self {
-        Self::default()
+        let mut app = Self::default();
+
+        let system_handle = app
+            .world
+            .instantiate_system(System::new(Parent::Root([1., 0.])));
+        // Sun
+        app.world.instantiate_object(Object {
+            parent: Parent::System(system_handle, Orbit::new(0)),
+            mass: 100000,
+        });
+        // Planet
+        app.world.instantiate_object(Object {
+            parent: Parent::System(system_handle, Orbit::new(5000)),
+            mass: 10000,
+        });
+
+        let handle = app.world.instantiate_object(Object {
+            parent: Parent::Root([0., 0.]),
+            mass: 4000,
+        });
+        app.handle = Some(handle);
+
+        app
     }
 
     /// Run the application's main loop.
