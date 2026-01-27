@@ -1,6 +1,6 @@
 use crate::{
     event::{AppEvent, Event, EventHandler},
-    space::{Galaxy, Object, ObjectHandle, Orbit, Parent, System},
+    space::{Galaxy, ObjectHandle, ParentBuilder, Relation},
 };
 use ratatui::{
     DefaultTerminal,
@@ -35,25 +35,27 @@ impl App {
     pub fn new() -> Self {
         let mut app = Self::default();
 
-        let system_handle = app
+        let sun = app
             .world
-            .instantiate_system(System::new(Parent::Root([1., 0.])));
-        // Sun
-        app.world.instantiate_object(Object {
-            parent: Parent::System(system_handle, Orbit::new(0)),
-            mass: 100000,
-        });
-        // Planet
-        app.world.instantiate_object(Object {
-            parent: Parent::System(system_handle, Orbit::new(5000)),
-            mass: 10000,
-        });
+            .spawn_object(300_000_000, ParentBuilder::Position([1.2, 0.7]));
+        let _planet_1 = app.world.spawn_object(
+            500_000,
+            ParentBuilder::Relation(sun, Relation::Orbit(400_000)),
+        );
+        let planet_2 = app.world.spawn_object(
+            700_000,
+            ParentBuilder::Relation(sun, Relation::Orbit(1_200_000)),
+        );
+        let _moon = app.world.spawn_object(
+            50_000,
+            ParentBuilder::Relation(planet_2, Relation::Orbit(30_000)),
+        );
+        let ship = app.world.spawn_object(
+            10_000,
+            ParentBuilder::Relation(planet_2, Relation::Orbit(20_000)),
+        );
 
-        let handle = app.world.instantiate_object(Object {
-            parent: Parent::System(system_handle, Orbit::new(5500)),
-            mass: 4000,
-        });
-        app.handle = Some(handle);
+        app.handle = Some(ship);
 
         app
     }
