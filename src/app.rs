@@ -21,7 +21,7 @@ pub struct App {
     pub handle: Option<ObjectHandle>,
     /// currently inspected object and its parents
     pub view: Vec<ObjectHandle>,
-    pub view_index: usize,
+    pub view_index: Option<usize>,
 }
 
 impl Default for App {
@@ -32,7 +32,7 @@ impl Default for App {
             world: Galaxy::new(),
             handle: None,
             view: vec![],
-            view_index: 0,
+            view_index: None,
         }
     }
 }
@@ -63,6 +63,7 @@ impl App {
         );
 
         app.handle = Some(ship);
+        app.view_goto(ship);
 
         app
     }
@@ -97,27 +98,50 @@ impl App {
     /// Handles the key events and updates the state of [`App`].
     pub fn handle_key_event(&mut self, key_event: KeyEvent) -> color_eyre::Result<()> {
         match key_event.code {
-            KeyCode::Esc | KeyCode::Char('q') => self.events.send(AppEvent::Quit),
+            KeyCode::Char('q') => self.events.send(AppEvent::Quit),
             KeyCode::Char('c' | 'C') if key_event.modifiers == KeyModifiers::CONTROL => {
                 self.events.send(AppEvent::Quit)
             }
 
-            KeyCode::Left => {
-                if self.view_index > 0 {
-                    self.view_index -= 1;
-                }
+            KeyCode::Esc => {
+                self.view_index = None;
             }
-            KeyCode::Right => {
-                if self.view_index < self.view.len() {
-                    self.view_index += 1;
+            KeyCode::Left => match &mut self.view_index {
+                Some(index) => {
+                    if *index > 0 {
+                        *index -= 1
+                    } else {
+                        *index = self.view.len()
+                    }
                 }
-            }
+                None => {
+                    if self.view.len() != 0 {
+                        self.view_index = Some(self.view.len() - 1);
+                    } else {
+                        self.view_index = Some(0)
+                    }
+                }
+            },
+            KeyCode::Right => match &mut self.view_index {
+                Some(index) => {
+                    if *index < self.view.len() {
+                        *index += 1
+                    } else {
+                        *index = 0
+                    }
+                }
+                None => {
+                    self.view_index = Some(0);
+                }
+            },
             // set view to selected
             KeyCode::Enter => {
-                if self.view_index == 0 {
-                    self.view_reset();
-                } else if let Some(object_handle) = self.view.get(self.view_index - 1) {
-                    self.view_goto(*object_handle);
+                if let Some(index) = self.view_index {
+                    if index == 0 {
+                        self.view_reset();
+                    } else if let Some(object_handle) = self.view.get(index - 1) {
+                        self.view_goto(*object_handle);
+                    }
                 }
             }
             // reset view to handle
@@ -152,11 +176,11 @@ impl App {
         }
         view.reverse();
         self.view = view;
-        self.view_index = self.view.len();
+        self.view_index = None;
     }
 
     fn view_reset(&mut self) {
         self.view.clear();
-        self.view_index = 0;
+        self.view_index = None;
     }
 }
