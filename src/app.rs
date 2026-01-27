@@ -1,6 +1,6 @@
 use crate::{
     event::{AppEvent, Event, EventHandler},
-    space::{Galaxy, ObjectHandle, ParentBuilder, Relation},
+    space::{Galaxy, ObjectHandle, Parent, ParentBuilder, Relation},
 };
 use ratatui::{
     DefaultTerminal,
@@ -15,8 +15,13 @@ pub struct App {
     /// Event handler.
     pub events: EventHandler,
 
+    /// game world
     pub world: Galaxy,
+    /// player handle
     pub handle: Option<ObjectHandle>,
+    /// currently inspected object and its parents
+    pub view: Vec<ObjectHandle>,
+    pub view_index: usize,
 }
 
 impl Default for App {
@@ -26,6 +31,8 @@ impl Default for App {
             events: EventHandler::new(),
             world: Galaxy::new(),
             handle: None,
+            view: vec![],
+            view_index: 0,
         }
     }
 }
@@ -94,8 +101,31 @@ impl App {
             KeyCode::Char('c' | 'C') if key_event.modifiers == KeyModifiers::CONTROL => {
                 self.events.send(AppEvent::Quit)
             }
-            //KeyCode::Right => self.events.send(AppEvent::Increment),
-            // Other handlers you could add here.
+
+            KeyCode::Left => {
+                if self.view_index > 0 {
+                    self.view_index -= 1;
+                }
+            }
+            KeyCode::Right => {
+                if self.view_index < self.view.len() {
+                    self.view_index += 1;
+                }
+            }
+            // set view to selected
+            KeyCode::Enter => {
+                if self.view_index == 0 {
+                    self.view_reset();
+                } else if let Some(object_handle) = self.view.get(self.view_index - 1) {
+                    self.view_goto(*object_handle);
+                }
+            }
+            // reset view to handle
+            KeyCode::Backspace => {
+                if let Some(handle) = self.handle {
+                    self.view_goto(handle);
+                }
+            }
             _ => {}
         }
         Ok(())
@@ -110,5 +140,23 @@ impl App {
     /// Set running to false to quit the application.
     pub fn quit(&mut self) {
         self.running = false;
+    }
+
+    fn view_goto(&mut self, object_handle: ObjectHandle) {
+        let mut view = vec![object_handle];
+
+        let mut current = &self.world.get_object(object_handle).unwrap().parent;
+        while let Parent::Relation(parent_handle) = current {
+            view.push(*parent_handle);
+            current = &self.world.get_object(*parent_handle).unwrap().parent
+        }
+        view.reverse();
+        self.view = view;
+        self.view_index = self.view.len();
+    }
+
+    fn view_reset(&mut self) {
+        self.view.clear();
+        self.view_index = 0;
     }
 }

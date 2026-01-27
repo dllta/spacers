@@ -1,12 +1,12 @@
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Layout, Rect},
-    style::{Color, Style},
+    style::{Color, Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, BorderType, Paragraph, Widget},
+    widgets::{Block, BorderType, Widget},
 };
 
-use crate::{app::App, space::Parent};
+use crate::app::App;
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
@@ -26,52 +26,54 @@ fn render_viewport(app: &App, area: Rect, buf: &mut Buffer) {
         .margin(1)
         .split(area);
 
-    let Some(handle) = app.handle else {
-        Paragraph::new("missing handle!")
-            .centered()
-            .render(layout[0], buf);
-        return;
-    };
+    //let Some(handle) = app.handle else {
+    //    Paragraph::new("missing handle!")
+    //        .centered()
+    //        .render(layout[0], buf);
+    //    return;
+    //};
 
-    let Some(object) = app.world.get_object(handle) else {
-        Paragraph::new("object does not exist!")
-            .centered()
-            .render(layout[0], buf);
-        return;
-    };
-
-    Paragraph::new(match &object.parent {
-        crate::space::Parent::Position(pos) => format!("position {:?}", pos),
-        crate::space::Parent::Relation(parent_handle) => {
-            format!("relation {:?}", parent_handle)
-        }
-    })
-    .centered()
-    .render(layout[0], buf);
+    //let Some(object) = app.world.get_object(handle) else {
+    //    Paragraph::new("object does not exist!")
+    //        .centered()
+    //        .render(layout[0], buf);
+    //    return;
+    //};
 
     // render path
-    let mut entries = vec![];
+    let path_layout =
+        Layout::horizontal([Constraint::Fill(1), Constraint::Length(6)]).split(layout[0]);
+    let mut line = Line::from(Span::from(format!("Root")).style(Style::new().fg(
+        if app.view_index == 0 {
+            Color::Yellow
+        } else {
+            Color::Blue
+        },
+    )));
+    app.view
+        .iter()
+        .enumerate()
+        .for_each(|(idx, object_handle)| {
+            line.push_span(Span::from(" > ").style(Style::new().fg(Color::DarkGray)));
+            line.push_span(
+                Span::from(format!("{:?}", object_handle)).style(Style::new().fg(
+                    if app.view_index == idx + 1 {
+                        Color::Yellow
+                    } else if app.view.len() == idx + 1 {
+                        Color::Green
+                    } else {
+                        Color::Blue
+                    },
+                )),
+            );
+        });
+    line.render(path_layout[0], buf);
 
-    let mut next_parent = &object.parent;
-    let pos = loop {
-        match next_parent {
-            Parent::Position(pos) => {
-                break pos;
-            }
-            Parent::Relation(parent_handle) => {
-                entries.push(parent_handle.clone());
-                next_parent = &app.world.get_object(*parent_handle).unwrap().parent;
-            }
-        }
-    };
-    entries.reverse();
-    let mut line = Line::from(
-        Span::from(format!("[{},{}]", pos[0], pos[1])).style(Style::new().fg(Color::Blue)),
-    );
-    for (_idx, parent) in entries.iter().enumerate() {
-        line.push_span(Span::from(" > ").style(Style::new().fg(Color::DarkGray)));
-        line.push_span(Span::from(format!("{:?}", parent)).style(Style::new().fg(Color::Blue)));
+    if app.handle != app.view.get(app.view.len().saturating_sub(1)).cloned() {
+        Line::from("[Back]")
+            .red()
+            .on_black()
+            .right_aligned()
+            .render(path_layout[1], buf);
     }
-
-    line.render(layout[1], buf);
 }
