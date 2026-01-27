@@ -87,4 +87,10 @@ impl Object {
             None => self.children = Some(HashMap::from([(object_handle, relation)])),
         };
     }
+    pub fn children_count(&self) -> usize {
+        match &self.children {
+            Some(children) => children.len(),
+            None => 0,
+        }
+    }
 }

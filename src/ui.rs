@@ -22,9 +22,13 @@ impl Widget for &App {
 }
 
 fn render_viewport(app: &App, area: Rect, buf: &mut Buffer) {
-    let layout = Layout::vertical(vec![Constraint::Length(1), Constraint::Length(1)])
-        .margin(1)
-        .split(area);
+    let layout = Layout::vertical(vec![
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+    ])
+    .margin(1)
+    .split(area);
 
     //let Some(handle) = app.handle else {
     //    Paragraph::new("missing handle!")
@@ -73,11 +77,28 @@ fn render_viewport(app: &App, area: Rect, buf: &mut Buffer) {
         });
     line.render(path_layout[0], buf);
 
-    if app.handle != app.view.get(app.view.len().saturating_sub(1)).cloned() {
+    if app.handle != app.get_view() {
         Line::from("[Back]")
             .red()
             .on_black()
             .right_aligned()
             .render(path_layout[1], buf);
+    }
+
+    let view = match app.view_index {
+        Some(_) => app.get_view_idx(),
+        None => app.get_view(),
+    };
+
+    if let Some(view_handle) = view {
+        let object = app.world.get_object(view_handle).unwrap();
+        Line::from(format!(
+            "Object (mass:{}, children:{})",
+            object.mass,
+            object.children_count(),
+        ))
+        .render(layout[1], buf);
+    } else {
+        Line::from("Global info here!").render(layout[1], buf);
     }
 }

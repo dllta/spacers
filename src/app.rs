@@ -139,8 +139,8 @@ impl App {
                 if let Some(index) = self.view_index {
                     if index == 0 {
                         self.view_reset();
-                    } else if let Some(object_handle) = self.view.get(index - 1) {
-                        self.view_goto(*object_handle);
+                    } else if let Some(object_handle) = self.get_view_idx() {
+                        self.view_goto(object_handle);
                     }
                 }
             }
@@ -182,5 +182,13 @@ impl App {
     fn view_reset(&mut self) {
         self.view.clear();
         self.view_index = None;
+    }
+
+    pub fn get_view(&self) -> Option<ObjectHandle> {
+        self.view.get(self.view.len().checked_sub(1)?).cloned()
+    }
+
+    pub fn get_view_idx(&self) -> Option<ObjectHandle> {
+        self.view.get(self.view_index?.checked_sub(1)?).cloned()
     }
 }
