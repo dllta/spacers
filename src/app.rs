@@ -1,6 +1,6 @@
 use crate::{
     event::{AppEvent, Event, EventHandler},
-    space::{Galaxy, ObjectHandle, Parent, ParentBuilder, Relation},
+    space::{Galaxy, Maneuver, Object, ObjectHandle, Parent, ParentBuilder, Relation},
 };
 use ratatui::{
     DefaultTerminal,
@@ -40,27 +40,19 @@ impl Default for App {
 impl App {
     /// Constructs a new instance of [`App`].
     pub fn new() -> Self {
-        let mut app = Self::default();
+        let mut world = Galaxy::new();
 
-        let sun = app
-            .world
-            .spawn_object(300_000_000, ParentBuilder::Position([1.2, 0.7]));
-        let _planet_1 = app.world.spawn_object(
-            500_000,
-            ParentBuilder::Relation(sun, Relation::Orbit(400_000)),
+        let sun = world.spawn_object(
+            Object::builder().name("Sun").mass(1_000.),
+            ParentBuilder::Position([0.3, 0.2]),
         );
-        let planet_2 = app.world.spawn_object(
-            700_000,
-            ParentBuilder::Relation(sun, Relation::Orbit(1_200_000)),
+        let ship = world.spawn_object(
+            Object::builder().name("Ship").mass(300.).maneuver(Maneuver),
+            ParentBuilder::Relation(sun, Relation::Orbit(300)),
         );
-        let _moon = app.world.spawn_object(
-            50_000,
-            ParentBuilder::Relation(planet_2, Relation::Orbit(30_000)),
-        );
-        let ship = app.world.spawn_object(
-            10_000,
-            ParentBuilder::Relation(planet_2, Relation::Orbit(20_000)),
-        );
+
+        let mut app = App::default();
+        app.world = world;
 
         app.handle = Some(ship);
         app.view_goto(ship);
