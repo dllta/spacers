@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, BorderType, Widget},
+    widgets::{Block, BorderType, Paragraph, Widget, Wrap},
 };
 
 use crate::app::App;
@@ -22,31 +22,20 @@ impl Widget for &App {
 }
 
 fn render_viewport(app: &App, area: Rect, buf: &mut Buffer) {
-    let layout = Layout::vertical(vec![
-        Constraint::Length(1),
-        Constraint::Length(1),
-        Constraint::Length(1),
-    ])
-    .margin(1)
-    .split(area);
+    let layout = Layout::vertical(vec![Constraint::Fill(1)])
+        .margin(1)
+        .split(area);
 
-    //let Some(handle) = app.handle else {
-    //    Paragraph::new("missing handle!")
-    //        .centered()
-    //        .render(layout[0], buf);
-    //    return;
-    //};
+    let height = render_path(app, layout[0], buf);
 
-    //let Some(object) = app.world.get_object(handle) else {
-    //    Paragraph::new("object does not exist!")
-    //        .centered()
-    //        .render(layout[0], buf);
-    //    return;
-    //};
+    let layout = Layout::vertical(vec![Constraint::Length(height + 1), Constraint::Fill(1)])
+        .margin(1)
+        .split(area);
 
-    // render path
-    let path_layout =
-        Layout::horizontal([Constraint::Fill(1), Constraint::Length(6)]).split(layout[0]);
+    render_view(app, layout[1], buf);
+}
+
+fn generate_path(app: &App) -> Paragraph<'_> {
     let mut line = Line::from(
         Span::from(format!("Root")).style(if app.view_index == Some(0) {
             Style::new().fg(Color::Yellow).bold()
@@ -75,16 +64,33 @@ fn render_viewport(app: &App, area: Rect, buf: &mut Buffer) {
                 },
             ));
         });
-    line.render(path_layout[0], buf);
+    Paragraph::new(line).wrap(Wrap { trim: true })
+}
 
+fn render_path(app: &App, mut area: Rect, buf: &mut Buffer) -> u16 {
     if app.handle != app.get_view() {
+        let layout = Layout::horizontal([Constraint::Fill(1), Constraint::Length(6)]).split(area);
+        area = layout[0];
+
         Line::from("[Back]")
             .red()
             .on_black()
             .right_aligned()
-            .render(path_layout[1], buf);
+            .render(layout[1], buf);
     }
 
+    let para = generate_path(app);
+    let line_count = para.line_count(area.width) as u16;
+
+    let layout =
+        Layout::vertical(vec![Constraint::Length(line_count), Constraint::Fill(1)]).split(area);
+
+    para.render(layout[0], buf);
+
+    line_count
+}
+
+fn render_view(app: &App, area: Rect, buf: &mut Buffer) {
     let view = match app.view_index {
         Some(_) => app.get_view_idx(),
         None => app.get_view(),
@@ -97,8 +103,8 @@ fn render_viewport(app: &App, area: Rect, buf: &mut Buffer) {
             object.mass,
             object.children_count(),
         ))
-        .render(layout[1], buf);
+        .render(area, buf);
     } else {
-        Line::from("Global info here!").render(layout[1], buf);
+        Line::from("Global info here!").render(area, buf);
     }
 }
