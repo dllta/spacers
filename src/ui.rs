@@ -93,7 +93,12 @@ fn render_path(app: &App, mut area: Rect, buf: &mut Buffer) -> u16 {
 }
 
 fn render_view(app: &App, area: Rect, buf: &mut Buffer) {
-    let layout = Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).split(area);
+    let layout = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+    ])
+    .split(area);
     let view = match app.view_index {
         Some(_) => app.get_view_idx(),
         None => app.get_view(),
@@ -110,8 +115,21 @@ fn render_view(app: &App, area: Rect, buf: &mut Buffer) {
         ))
         .render(layout[0], buf);
 
+        Line::from(match object.parent {
+            crate::space::Parent::Position(pos) => format!("at [{},{}]", pos[0], pos[1]),
+            crate::space::Parent::Relation(parent_handle) => {
+                let parent = app.world.get_object(parent_handle).unwrap();
+                format!(
+                    "orbiting {}: {:?}",
+                    parent.name,
+                    parent.get_child(view_handle).unwrap()
+                )
+            }
+        })
+        .render(layout[1], buf);
+
         if let Some(_maneuver) = app.world.get_maneuver(view_handle) {
-            Line::from("maneuver capable").render(layout[1], buf);
+            Line::from("maneuver capable").render(layout[2], buf);
         }
     } else {
         Line::from("Global info here!").render(area, buf);

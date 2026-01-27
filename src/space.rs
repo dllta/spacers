@@ -148,6 +148,12 @@ impl Object {
     pub fn builder() -> ObjectBuilder {
         ObjectBuilder::default()
     }
+    pub fn get_child(&self, object_handle: ObjectHandle) -> Option<&Relation> {
+        match &self.children {
+            Some(children) => children.get(&object_handle),
+            None => None,
+        }
+    }
     fn insert_child(&mut self, object_handle: ObjectHandle, relation: Relation) {
         match &mut self.children {
             Some(children) => {
