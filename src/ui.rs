@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, BorderType, Paragraph, Widget, Wrap},
 };
 
-use crate::app::App;
+use crate::{app::App, object::Parent, space::World};
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
@@ -37,7 +37,7 @@ fn render_viewport(app: &App, area: Rect, buf: &mut Buffer) {
 
 fn generate_path(app: &App) -> Paragraph<'_> {
     let mut line = Line::from(Span::from("Space").style(if app.view_index == Some(0) {
-        Style::new().fg(Color::Yellow).bold()
+        Style::new().bg(Color::Yellow).fg(Color::Blue).bold()
     } else if app.view.len() == 0 {
         Style::new().fg(Color::Green)
     } else {
@@ -54,7 +54,7 @@ fn generate_path(app: &App) -> Paragraph<'_> {
                     app.world.get_object(*object_handle).unwrap().name
                 ))
                 .style(if app.view_index == Some(idx + 1) {
-                    Style::new().fg(Color::Yellow).bold()
+                    Style::new().bg(Color::Yellow).fg(Color::Blue).bold()
                 } else if app.view.len() == idx + 1 {
                     if app.view_index == None {
                         Style::new().fg(Color::Green).bold()
@@ -66,21 +66,17 @@ fn generate_path(app: &App) -> Paragraph<'_> {
                 }),
             );
         });
+    if app.view_index != None {
+        line.push_span(Span::from(" [Esc]").style(Style::new().fg(Color::Yellow)));
+    } else if app.get_view() != app.world.get_handle() {
+        line.push_span(Span::from(" [Esc]").style(Style::new().fg(Color::Gray)));
+    } else {
+        line.push_span(Span::from(" <-You").style(Style::new().fg(Color::Gray)));
+    }
     Paragraph::new(line).wrap(Wrap { trim: true })
 }
 
-fn render_path(app: &App, mut area: Rect, buf: &mut Buffer) -> u16 {
-    if app.handle != app.get_view() {
-        let layout = Layout::horizontal([Constraint::Fill(1), Constraint::Length(6)]).split(area);
-        area = layout[0];
-
-        Line::from("[Back]")
-            .red()
-            .on_black()
-            .right_aligned()
-            .render(layout[1], buf);
-    }
-
+fn render_path(app: &App, area: Rect, buf: &mut Buffer) -> u16 {
     let para = generate_path(app);
     let line_count = para.line_count(area.width) as u16;
 
@@ -116,8 +112,8 @@ fn render_view(app: &App, area: Rect, buf: &mut Buffer) {
         .render(layout[0], buf);
 
         Line::from(match object.parent {
-            crate::space::Parent::Position(pos) => format!("at [{},{}]", pos[0], pos[1]),
-            crate::space::Parent::Relation(parent_handle) => {
+            Parent::Position(pos) => format!("at [{},{}]", pos[0], pos[1]),
+            Parent::Relation(parent_handle) => {
                 let parent = app.world.get_object(parent_handle).unwrap();
                 format!(
                     "orbiting {}: {:?}",
@@ -127,10 +123,6 @@ fn render_view(app: &App, area: Rect, buf: &mut Buffer) {
             }
         })
         .render(layout[1], buf);
-
-        if let Some(_maneuver) = app.world.get_maneuver(view_handle) {
-            Line::from("maneuver capable").render(layout[2], buf);
-        }
     } else {
         Line::from("Global info here!").render(area, buf);
     }

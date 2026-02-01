@@ -1,6 +1,5 @@
 use crate::{
-    event::{AppEvent, Event, EventHandler},
-    space::{Galaxy, Maneuver, Object, ObjectHandle, Parent, ParentBuilder, Relation},
+    event::{AppEvent, Event, EventHandler}, object::{ObjectHandle, Parent}, space::{Galaxy, World},
 };
 use ratatui::{
     DefaultTerminal,
@@ -17,8 +16,7 @@ pub struct App {
 
     /// game world
     pub world: Galaxy,
-    /// player handle
-    pub handle: Option<ObjectHandle>,
+
     /// currently inspected object and its parents
     pub view: Vec<ObjectHandle>,
     pub view_index: Option<usize>,
@@ -30,7 +28,6 @@ impl Default for App {
             running: true,
             events: EventHandler::new(),
             world: Galaxy::new(),
-            handle: None,
             view: vec![],
             view_index: None,
         }
@@ -40,22 +37,11 @@ impl Default for App {
 impl App {
     /// Constructs a new instance of [`App`].
     pub fn new() -> Self {
-        let mut world = Galaxy::new();
-
-        let sun = world.spawn_object(
-            Object::builder().name("Sun").mass(1_000.),
-            ParentBuilder::Position([0.3, 0.2]),
-        );
-        let ship = world.spawn_object(
-            Object::builder().name("Ship").mass(300.).maneuver(Maneuver),
-            ParentBuilder::Relation(sun, Relation::Orbit(300)),
-        );
-
         let mut app = App::default();
-        app.world = world;
 
-        app.handle = Some(ship);
-        app.view_goto(ship);
+        if let Some(handle) = app.world.get_handle() {
+            app.view_goto(handle);
+        }
 
         app
     }
@@ -96,7 +82,13 @@ impl App {
             }
 
             KeyCode::Esc => {
-                self.view_index = None;
+                if self.view_index == None {
+                    if let Some(handle) = self.world.get_handle() {
+                        self.view_goto(handle);
+                    }
+                } else {
+                    self.view_index = None;
+                }
             }
             KeyCode::Left => match &mut self.view_index {
                 Some(index) => {
@@ -138,7 +130,7 @@ impl App {
             }
             // reset view to handle
             KeyCode::Backspace => {
-                if let Some(handle) = self.handle {
+                if let Some(handle) = self.world.get_handle() {
                     self.view_goto(handle);
                 }
             }
